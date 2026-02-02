@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>웹 포트폴리오 차트</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;600&display=swap');
+
+    body {
+      font-family: 'IBM Plex Sans KR', sans-serif;
+      padding: 20px;
+      background-color: #f8f9fa;
+      color: #333;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+    h2, h3 { color: #2c3e50; font-weight: 600; }
+    input, select, button {
+      margin: 5px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 14px;
+      font-family: 'IBM Plex Sans KR', sans-serif;
+    }
+    button {
+      background-color: #3498db;
+      color: white;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    button:hover { background-color: #2980b9; }
+    .item-list { margin-top: 15px; font-size: 14px; }
+    #portfolioChartContainer {
+      position: relative;
+      width: 100%;
+      max-width: 500px;
+      margin: 20px auto;
+    }
+    #portfolioChart {
+      width: 100% !important;
+      height: auto !important;
+    }
+    .category-buttons {
+      margin: 10px auto 15px auto;
+      text-align: center;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 5px;
+    }
+    .category-buttons button {
+      min-height: 35px;
+      min-width: 60px;
+      padding: 8px 12px;
+      font-weight: bold;
+      border: 2px solid #27ae60;
+      background-color: white;
+      color: #27ae60;
+      font-family: 'IBM Plex Sans KR', sans-serif;
+    }
+    .category-buttons button.active {
+      background-color: #27ae60;
+      color: white;
+    }
+    .total {
+      margin-top: 10px;
+      font-weight: bold;
+      text-align: center;
+      font-size: 16px;
+    }
+    .totals-breakdown {
+      text-align: center;
+      font-size: 14px;
+      margin-top: 5px;
+    }
+    .action-btn {
+      background-color: #e74c3c;
+      margin-left: 5px;
+    }
+    .edit-btn {
+      background-color: #f39c12;
+    }
+    input[type="file"] {
+      display: none;
+    }
+    .file-label {
+      display: inline-block;
+      background-color: #3498db;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      margin: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h2>📊 웹 포트폴리오 차트</h2>
+  <button id="loginBtn" hidden class="bg-red-500 text-white px-4 py-2 rounded">Google 로그인</button>
+  <button id="logoutBtn" hidden class="hidden text-sm underline text-gray-500">로그아웃</button>
+  <!-- <label>📌 차트 제목: </label> -->
+  <input hidden id="chartTitle" value="나의 포트폴리오" onchange="updateChart()" />
+  <div class="flex items-center space-x-2">
+    <input
+      id="chartNameInput"
+      hidden
+      type="text"
+      placeholder="차트 이름 입력"
+      class="border border-gray-300 rounded px-3 py-2 text-sm"
+      onchange="updateChart()"
+    />
+    <button
+      id="firebaseSaveBtn"
+      hidden
+      class="text-sm underline text-gray-500 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+    >
+      차트 저장
+    </button>
+  </div>
+  <br/>
+  <button onclick="toggleForm()">+ 종목 추가</button>
+  <div id="form" style="display:none;">
+    <input id="name" placeholder="종목 이름" />
+    <input id="amount" type="number" placeholder="개수" />
+    <input id="price" type="number" placeholder="가격" />
+    <select id="currency">
+      <option value="KRW">원</option>
+      <option value="USD">달러</option>
+    </select>
+    <input id="category" placeholder="카테고리 (쉼표로 구분)" />
+    <button onclick="submitItem()">확인</button>
+  </div>
+
+  <div style="margin-top:15px;">
+    <label>💱 환율 (1 USD = 원화):</label>
+    <input id="exchangeRate" type="number" value="1300" onchange="updateAll()" />
+  </div>
+
+  <div class="item-list" id="itemList"></div>
+
+  <div id="portfolioChartContainer">
+    <canvas id="portfolioChart"></canvas>
+  </div>
+
+  <div class="category-buttons" id="categoryButtons"></div>
+
+  <div class="total" id="totalAmount"></div>
+  <div class="totals-breakdown" id="categoryTotals"></div>
+
+  <h3>📂 데이터 저장 및 불러오기</h3>
+  <button onclick="saveData()">💾 저장 (로컬)</button>
+  <button onclick="loadData()">📂 불러오기 (로컬)</button>
+  <button onclick="downloadCSV()">⬇️ CSV 다운로드</button>
+  <button onclick="downloadJSON()">⬇️ JSON 다운로드</button>
+  <label for="fileUpload" class="file-label">📁 파일 업로드</label>
+  <input type="file" id="fileUpload" onchange="uploadFile(event)" />
+
+  <!-- <button id="firebaseSaveBtn" hidden class="hidden text-sm underline text-gray-500">계정에 저장</button> -->
+  <h3>📊 Google 계정에 저장된 차트 목록</h3>
+  <div id="chartList">
+    <!-- charts 리스트가 여기에 동적으로 추가될거야 -->
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
+    import { getFirestore, doc, setDoc, getDoc, collection, getDocs, deleteDoc } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
+    import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyC1-dNvQQbb4B5j6N5hZCI4dT8yTVu8y8o",
+      authDomain: "my-portfolio-app-ae0e6.firebaseapp.com",
+      projectId: "my-portfolio-app-ae0e6",
+      storageBucket: "my-portfolio-app-ae0e6.firebasestorage.app",
+      messagingSenderId: "297732155840",
+      appId: "1:297732155840:web:5455116e2a03cfcccc0025",
+      measurementId: "G-4N0N8Q981S"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const loginBtn = document.getElementById('loginBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    let currentUser = null;
+
+    loginBtn.addEventListener('click', async () => {
+      const provider = new GoogleAuthProvider();
+      try {
+        const result = await signInWithPopup(auth, provider);
+        currentUser = result.user;
+        console.log('✅ 로그인:', currentUser.email);
+        // loadUserStocks();
+      } catch (err) {
+        console.error('❌ 로그인 오류:', err.message);
+      }
+    });
+
+    logoutBtn.addEventListener('click', () => {
+      console.log("log out");
+      signOut(auth);
+    });
+
+    onAuthStateChanged(auth, user => {
+      const loginBtn = document.getElementById("loginBtn");
+      const logoutBtn = document.getElementById("logoutBtn");
+      const firebaseSaveBtn = document.getElementById("firebaseSaveBtn");
+      const chartNameInput = document.getElementById("chartNameInput");
+      if (user) {
+        currentUser = user;
+        // loginBtn.setAttribute("hidden", "hidden");
+        // logoutBtn.removeAttribute("hidden");
+        loginBtn.style.display = 'none';
+        logoutBtn.style.display = 'inline-block';
+        firebaseSaveBtn.style.display = 'inline-block';
+        chartNameInput.style.display = 'inline-block';
+
+        loadChartList(); // ✅ 로그인하면 charts 목록 불러오기
+      } else {
+        // loginBtn.removeAttribute("hidden");
+        // logoutBtn.setAttribute("hidden", "hidden");
+        loginBtn.style.display = 'inline-block';
+        logoutBtn.style.display = 'none';
+        firebaseSaveBtn.style.display = 'none';
+        chartNameInput.style.display = 'none';
+
+        const chartListDiv = document.getElementById('chartList');
+        chartListDiv.innerHTML = ''; // 로그아웃 시 charts 목록 지우기
+      }
+    });
+
+    const firebaseSaveBtn = document.getElementById('firebaseSaveBtn');
+    const chartNameInput = document.getElementById('chartNameInput');
+
+    firebaseSaveBtn.addEventListener('click', async () => {
+      const chartName = chartNameInput.value.trim();
+      if (!chartName) {
+        alert('차트 이름을 입력하세요!');
+        return;
+      }
+      await saveToFirebase(chartName);
+      chartNameInput.value = ''; // 저장 후 입력창 비우기
+    });
+
+    async function saveToFirebase(chartName) {
+      const data = {
+        items,
+        exchangeRate: getExchangeRate()
+      };
+      console.log(`현재 사용자: ${currentUser.uid}`);
+      await setDoc(doc(db, 'users', currentUser.uid, 'charts', chartName), {
+        jsonData: JSON.stringify(data)
+      });
+      alert(`'${chartName}' 이름으로 저장되었습니다.`);
+      loadChartList(); // 차트 목록 새로고침
+    }
+
+    async function loadChartList() {
+      const chartListDiv = document.getElementById('chartList');
+      chartListDiv.innerHTML = ''; // 리스트 초기화
+
+      const chartsRef = collection(db, 'users', currentUser.uid, 'charts');
+      const snapshot = await getDocs(chartsRef);
+
+      snapshot.forEach(docSnap => {
+        const chartName = docSnap.id;
+
+        const div = document.createElement('div');
+        div.className = "flex items-center space-x-4";
+
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = chartName;
+        nameSpan.className = "text-gray-700";
+
+        const loadButton = document.createElement('button');
+        loadButton.textContent = '불러오기';
+        loadButton.className = "bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 text-sm";
+        loadButton.addEventListener('click', () => loadChart(chartName));
+
+        const deleteButton = document.createElement('button');
+        deleteButton.textContent = '삭제하기';
+        deleteButton.className = "bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 text-sm";
+        deleteButton.addEventListener('click', (event) => {
+          const chartDiv = event.target.closest('div'); // 삭제 버튼의 부모 div 찾기
+          deleteChart(chartDiv, chartName);
+        });
+
+        div.appendChild(nameSpan);
+        div.appendChild(loadButton);
+        div.appendChild(deleteButton);
+        chartListDiv.appendChild(div);
+      });
+
+      if (snapshot.empty) {
+        chartListDiv.innerHTML = '<p class="text-gray-500">저장된 차트가 없습니다.</p>';
+      }
+    }
+
+    async function loadChart(chartName) {
+      const chartDocRef = doc(db, 'users', currentUser.uid, 'charts', chartName);
+      const chartDoc = await getDoc(chartDocRef);
+
+      if (chartDoc.exists()) {
+        const data = JSON.parse(chartDoc.data().jsonData);
+
+        items = data.items || [];
+        document.getElementById('exchangeRate').value = data.exchangeRate || 1300;
+        updateAll();
+      } else {
+        alert('차트를 찾을 수 없습니다.');
+      }
+    }
+
+    async function deleteChart(selfElement, chartName) {
+      const chartDocRef = doc(db, 'users', currentUser.uid, 'charts', chartName);
+      const chartDoc = await getDoc(chartDocRef);
+
+      if (chartDoc.exists()) {
+        try {
+          // Firebase에서 차트 삭제
+          await deleteDoc(chartDocRef);
+          alert("삭제 완료!");
+          
+          // 화면에서 해당 차트 요소 지우기
+          selfElement.remove();
+        } catch (error) {
+          console.error("차트 삭제 오류:", error);
+        }
+
+        // 차트 삭제 후 전체 업데이트
+        updateAll();
+      } else {
+        alert('차트를 찾을 수 없습니다.');
+      }
+    }
+  </script>
+
+  <script>
+    let items = [];
+    let portfolioChart = null;
+    let selectedCategories = new Set();
+    let editingIndex = null;
+
+    function toggleForm() {
+      const form = document.getElementById('form');
+      form.style.display = form.style.display === 'none' ? 'block' : 'none';
+      if (form.style.display === 'none') clearForm();
+    }
+
+    function submitItem() {
+      const name = document.getElementById('name').value;
+      const amount = parseFloat(document.getElementById('amount').value);
+      const price = parseFloat(document.getElementById('price').value);
+      const currency = document.getElementById('currency').value;
+      const categories = document.getElementById('category').value.split(',').map(c => c.trim()).filter(c => c);
+      const date = new Date().toISOString().split('T')[0];
+
+      if (!name || isNaN(amount) || isNaN(price)) {
+        alert('이름, 개수, 가격을 정확히 입력해주세요.');
+        return;
+      }
+
+      const item = { name, amount, price, currency, categories, date };
+
+      if (editingIndex !== null) {
+        items[editingIndex] = item;
+        editingIndex = null;
+      } else {
+        items.push(item);
+      }
+
+      clearForm();
+      updateAll();
+    }
+
+    function editItem(index) {
+      const item = items[index];
+      document.getElementById('name').value = item.name;
+      document.getElementById('amount').value = item.amount;
+      document.getElementById('price').value = item.price;
+      document.getElementById('currency').value = item.currency;
+      document.getElementById('category').value = item.categories.join(', ');
+      editingIndex = index;
+      document.getElementById('form').style.display = 'block';
+    }
+
+    function deleteItem(index) {
+      if (confirm('정말 삭제하시겠습니까?')) {
+        items.splice(index, 1);
+        updateAll();
+      }
+    }
+
+    function clearForm() {
+      document.getElementById('name').value = '';
+      document.getElementById('amount').value = '';
+      document.getElementById('price').value = '';
+      document.getElementById('currency').value = 'KRW';
+      document.getElementById('category').value = '';
+      editingIndex = null;
+    }
+
+    function getExchangeRate() {
+      return parseFloat(document.getElementById('exchangeRate').value);
+    }
+
+    function getTotalValue(item) {
+      const rate = getExchangeRate();
+      return item.currency === 'USD' ? item.amount * item.price * rate : item.amount * item.price;
+    }
+
+    function updateAll() {
+      updateList();
+      updateCategoryButtons();
+      updateChart();
+      updateTotal();
+    }
+
+    function updateList() {
+      const list = document.getElementById('itemList');
+      list.innerHTML = items.map((i, idx) => `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; background: #fff; padding: 10px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+          <div style="text-align: left;">
+            <div>📌 ${i.name} - ${i.amount}개 x ${i.price}${i.currency} = ${getTotalValue(i).toLocaleString()}원</div>
+            <div style="margin-top: 4px; font-size: 13px; color: #555;">
+              [${i.categories.join(', ')} | ${i.date}]
+            </div>
+          </div>
+          <div>
+            <button class="edit-btn" onclick="editItem(${idx})">✏️</button>
+            <button class="action-btn" onclick="deleteItem(${idx})">🗑️</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function updateCategoryButtons() {
+      const container = document.getElementById('categoryButtons');
+      const allCategories = [...new Set(items.flatMap(i => i.categories))];
+      
+      if (allCategories.length === 0) {
+        container.innerHTML = '';
+        return;
+      }
+
+      let html = '';
+
+      // 전체 버튼 텍스트: 전체 선택 또는 전체 해제
+      const isAllSelected = selectedCategories.size === allCategories.length;
+      const allButtonText = isAllSelected ? '전체 해제' : '전체 선택';
+
+
+      // 전체 선택/해제 버튼 추가
+      html += `
+        <button onclick="toggleAllCategories()" 
+          class="${isAllSelected || selectedCategories.size === 0 ? 'active' : ''}">
+          ${allButtonText}
+        </button>
+      `;
+
+      html += allCategories.map(cat => `
+        <button onclick="toggleCategory('${cat}')" class="${selectedCategories.has(cat) ? 'active' : ''}">
+          ${cat}
+        </button>
+      `).join('');
+
+      container.innerHTML = html;
+    }
+
+    function toggleAllCategories() {
+      const allCategories = [...new Set(items.flatMap(i => i.categories))];
+
+      if (selectedCategories.size === allCategories.length) {
+        selectedCategories.clear();
+      } else {
+        selectedCategories = new Set(allCategories);
+      }
+
+      updateCategoryButtons();
+      updateChart();
+      updateTotal();
+    }
+
+    function toggleCategory(cat) {
+      if (selectedCategories.has(cat)) {
+        selectedCategories.delete(cat);
+      } else {
+        selectedCategories.add(cat);
+      }
+      updateCategoryButtons();
+      updateChart();
+      updateTotal();
+    }
+
+    function updateChart() {
+      const ctx = document.getElementById('portfolioChart').getContext('2d');
+      const categorySums = {};
+
+      items.forEach(item => {
+        const value = getTotalValue(item);
+        item.categories.forEach(cat => {
+          if (selectedCategories.size === 0 || selectedCategories.has(cat)) {
+            categorySums[cat] = (categorySums[cat] || 0) + value;
+          }
+        });
+      });
+
+      const labels = Object.keys(categorySums);
+      const values = Object.values(categorySums);
+
+      if (portfolioChart) portfolioChart.destroy();
+
+      portfolioChart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+          labels,
+          datasets: [{
+            data: values,
+            backgroundColor: [
+              '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'
+            ]
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            datalabels: {
+              formatter: (value, context) => {
+                const sum = context.chart._metasets[0].total;
+                const percentage = ((value / sum) * 100).toFixed(1) + '%';
+                return percentage;
+              },
+              color: '#fff',
+              font: {
+                weight: 'bold'
+              }
+            },
+            legend: { position: 'bottom' },
+            title: {
+              display: true,
+              text: document.getElementById('chartTitle').value
+            }
+          }
+        },
+        plugins: [ChartDataLabels]
+      });
+    }
+
+    function updateTotal() {
+      const totalDiv = document.getElementById('totalAmount');
+      let sum = 0;
+      items.forEach(item => {
+        const value = getTotalValue(item);
+        const matched = item.categories.some(cat => selectedCategories.size === 0 || selectedCategories.has(cat));
+        if (matched) sum += value;
+      });
+      totalDiv.textContent = `총합: ${sum.toLocaleString()} 원`;
+    }
+
+    function saveData() {
+      const data = {
+        items,
+        exchangeRate: getExchangeRate()
+      };
+      console.log(JSON.stringify(data));
+      localStorage.setItem('portfolioData', JSON.stringify(data));
+      alert('저장되었습니다.');
+    }
+
+    function loadData() {
+      const data = localStorage.getItem('portfolioData');
+      if (data) {
+        const parsed = JSON.parse(data);
+        items = parsed.items || [];
+        document.getElementById('exchangeRate').value = parsed.exchangeRate || 1300;
+        updateAll();
+        alert('불러오기 완료!');
+      } else {
+        alert('저장된 데이터가 없습니다.');
+      }
+    }
+
+    function downloadJSON() {
+      const blob = new Blob([JSON.stringify({ items, exchangeRate: getExchangeRate() }, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      console.log(blob)
+      console.log(url)
+      a.href = url;
+      a.download = 'portfolio.json';
+      a.click();
+    }
+
+    function downloadCSV() {
+      const header = '이름,개수,가격,통화,카테고리,날짜\n';
+      const rows = items.map(i => `${i.name},${i.amount},${i.price},${i.currency},"${i.categories.join('|')}",${i.date}`).join('\n');
+      const blob = new Blob([header + rows], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'portfolio.csv';
+      a.click();
+    }
+
+    function uploadFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = JSON.parse(e.target.result);
+          items = data.items || [];
+          document.getElementById('exchangeRate').value = data.exchangeRate || 1300;
+          updateAll();
+          alert('파일 불러오기 완료!');
+        } catch (e) {
+          alert('JSON 형식이 올바르지 않습니다.');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    updateAll();
+  </script>
+</body>
+</html>
