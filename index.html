@@ -174,11 +174,12 @@
     const firebaseConfig = {
       apiKey: "AIzaSyC1-dNvQQbb4B5j6N5hZCI4dT8yTVu8y8o",
       authDomain: "my-portfolio-app-ae0e6.firebaseapp.com",
+      databaseURL: "https://my-portfolio-app-ae0e6-default-rtdb.asia-southeast1.firebasedatabase.app",
       projectId: "my-portfolio-app-ae0e6",
       storageBucket: "my-portfolio-app-ae0e6.firebasestorage.app",
       messagingSenderId: "297732155840",
-      appId: "1:297732155840:web:5455116e2a03cfcccc0025",
-      measurementId: "G-4N0N8Q981S"
+      appId: "1:297732155840:web:e7b288878e27f69fcc0025",
+      measurementId: "G-HXMCWTC9PS"
     };
 
     // Initialize Firebase
@@ -254,7 +255,7 @@
         exchangeRate: getExchangeRate()
       };
       console.log(`현재 사용자: ${currentUser.uid}`);
-      await setDoc(doc(db, 'users', currentUser.uid, 'charts', chartName), {
+      await setDoc(doc(db, 'dev_users', currentUser.uid, 'charts', chartName), {
         jsonData: JSON.stringify(data)
       });
       alert(`'${chartName}' 이름으로 저장되었습니다.`);
@@ -265,7 +266,7 @@
       const chartListDiv = document.getElementById('chartList');
       chartListDiv.innerHTML = ''; // 리스트 초기화
 
-      const chartsRef = collection(db, 'users', currentUser.uid, 'charts');
+      const chartsRef = collection(db, 'dev_users', currentUser.uid, 'charts');
       const snapshot = await getDocs(chartsRef);
 
       snapshot.forEach(docSnap => {
@@ -303,7 +304,7 @@
     }
 
     async function loadChart(chartName) {
-      const chartDocRef = doc(db, 'users', currentUser.uid, 'charts', chartName);
+      const chartDocRef = doc(db, 'dev_users', currentUser.uid, 'charts', chartName);
       const chartDoc = await getDoc(chartDocRef);
 
       if (chartDoc.exists()) {
@@ -318,7 +319,7 @@
     }
 
     async function deleteChart(selfElement, chartName) {
-      const chartDocRef = doc(db, 'users', currentUser.uid, 'charts', chartName);
+      const chartDocRef = doc(db, 'dev_users', currentUser.uid, 'charts', chartName);
       const chartDoc = await getDoc(chartDocRef);
 
       if (chartDoc.exists()) {
