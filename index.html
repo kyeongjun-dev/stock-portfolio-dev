@@ -156,8 +156,10 @@
   <button onclick="loadData()">📂 불러오기 (로컬)</button>
   <button onclick="downloadCSV()">⬇️ CSV 다운로드</button>
   <button onclick="downloadJSON()">⬇️ JSON 다운로드</button>
-  <label for="fileUpload" class="file-label">📁 파일 업로드</label>
-  <input type="file" id="fileUpload" onchange="uploadFile(event)" />
+  <label for="fileUpload" class="file-label">📁 JSON 업로드</label>
+  <input type="file" id="fileUpload" accept=".json" onchange="uploadFile(event)" />
+  <label for="csvUpload" class="file-label">📁 CSV 업로드</label>
+  <input type="file" id="csvUpload" accept=".csv" onchange="uploadCSVFile(event)" />
 
   <!-- <button id="firebaseSaveBtn" hidden class="hidden text-sm underline text-gray-500">계정에 저장</button> -->
   <h3>📊 Google 계정에 저장된 차트 목록</h3>
@@ -626,6 +628,45 @@
         }
       };
       reader.readAsText(file);
+      event.target.value = '';
+    }
+
+    function uploadCSVFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const text = e.target.result;
+          const lines = text.trim().split('\n');
+          const dataLines = lines.slice(1); // 헤더 스킵
+
+          const parsedItems = dataLines.filter(line => line.trim()).map(line => {
+            const match = line.match(/^(.*?),([\d.]+),([\d.]+),(KRW|USD),"([^"]*)",(\d{4}-\d{2}-\d{2})$/);
+            if (!match) throw new Error('CSV 형식 오류: ' + line);
+
+            const [, name, amount, price, currency, categories, date] = match;
+            return {
+              name: name.trim(),
+              amount: parseFloat(amount),
+              price: parseFloat(price),
+              currency: currency.trim(),
+              categories: categories.split('|').map(c => c.trim()),
+              date: date.trim()
+            };
+          });
+
+          items = parsedItems;
+          updateAll();
+          alert('CSV 파일 불러오기 완료!');
+        } catch (err) {
+          alert('CSV 형식이 올바르지 않습니다.');
+          console.error(err);
+        }
+      };
+      reader.readAsText(file);
+      event.target.value = '';
     }
 
     updateAll();
