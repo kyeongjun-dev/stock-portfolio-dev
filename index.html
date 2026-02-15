@@ -32,7 +32,7 @@
       font-weight: bold;
     }
     button:hover { background-color: #2980b9; }
-    .item-list { margin-top: 15px; font-size: 14px; }
+    .item-list, .dividend-list { margin-top: 15px; font-size: 14px; }
     #portfolioChartContainer {
       position: relative;
       width: 100%;
@@ -79,9 +79,19 @@
     .action-btn {
       background-color: #e74c3c;
       margin-left: 5px;
+      padding: 4px 8px;
+      font-size: 12px;
     }
     .edit-btn {
       background-color: #f39c12;
+      padding: 4px 8px;
+      font-size: 12px;
+    }
+    .btn-dividend {
+      background-color: #8e44ad;
+    }
+    .btn-dividend:hover {
+      background-color: #9b59b6;
     }
     input[type="file"] {
       display: none;
@@ -96,13 +106,49 @@
       font-weight: bold;
       margin: 5px;
     }
+
+    /* 배당금 모달 스타일 */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-content {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 450px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+    .dividend-record {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+      background: #f1f3f5;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+    }
+    .dividend-summary {
+      margin-top: 20px;
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
   </style>
 </head>
 <body>
   <h2>📊 웹 포트폴리오 차트</h2>
   <button id="loginBtn" hidden class="bg-red-500 text-white px-4 py-2 rounded">Google 로그인</button>
   <button id="logoutBtn" hidden class="hidden text-sm underline text-gray-500">로그아웃</button>
-  <!-- <label>📌 차트 제목: </label> -->
+  
   <input hidden id="chartTitle" value="나의 포트폴리오" onchange="updateChart()" />
   <div class="flex items-center space-x-2">
     <input
@@ -122,8 +168,12 @@
     </button>
   </div>
   <br/>
-  <button onclick="toggleForm()">+ 종목 추가</button>
-  <div id="form" style="display:none;">
+  <div style="display:flex; gap:5px; flex-wrap:wrap;">
+    <button onclick="toggleForm()">+ 종목 추가</button>
+    <button class="btn-dividend" onclick="openDividendModal()">+ 배당금 추가</button>
+  </div>
+
+  <div id="form" style="display:none; margin-top:10px; padding:10px; background:#fff; border-radius:8px;">
     <input id="name" placeholder="종목 이름" />
     <input id="amount" type="number" placeholder="개수" />
     <input id="price" type="number" placeholder="가격" />
@@ -151,37 +201,61 @@
   <div class="total" id="totalAmount"></div>
   <div class="totals-breakdown" id="categoryTotals"></div>
 
+  <div id="dividendListContainer"></div>
+  <div id="dividendSummaryContainer"></div>
+
   <h3>📂 데이터 저장 및 불러오기</h3>
   <button onclick="saveData()">💾 저장 (로컬)</button>
   <button onclick="loadData()">📂 불러오기 (로컬)</button>
   <button onclick="downloadCSV()">⬇️ CSV 다운로드</button>
   <button onclick="downloadJSON()">⬇️ JSON 다운로드</button>
-  <label for="fileUpload" class="file-label">📁 파일 업로드</label>
-  <input type="file" id="fileUpload" onchange="uploadFile(event)" />
+  <label for="fileUpload" class="file-label">📁 JSON 업로드</label>
+  <input type="file" id="fileUpload" accept=".json" onchange="uploadFile(event)" />
+  <label for="csvUpload" class="file-label">📁 CSV 업로드</label>
+  <input type="file" id="csvUpload" accept=".csv" onchange="uploadCSVFile(event)" />
 
-  <!-- <button id="firebaseSaveBtn" hidden class="hidden text-sm underline text-gray-500">계정에 저장</button> -->
   <h3>📊 Google 계정에 저장된 차트 목록</h3>
-  <div id="chartList">
-    <!-- charts 리스트가 여기에 동적으로 추가될거야 -->
+  <div id="chartList"></div>
+
+  <div class="modal-overlay" id="dividendModal">
+    <div class="modal-content">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+        <h3>💰 배당금 기록</h3>
+        <button onclick="closeDividendModal()" style="background:transparent; color:#999; border:none; font-size:20px;">✕</button>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <input id="divStockName" list="divStockList" placeholder="종목이름 (직접입력 또는 선택)" />
+        <datalist id="divStockList"></datalist>
+        <div style="display:flex; gap:5px;">
+            <input id="divTotalAmount" type="number" step="0.01" placeholder="배당금액" style="flex:1" />
+            <select id="divCurrency" style="width: 80px;">
+              <option value="KRW">KRW</option>
+              <option value="USD">USD</option>
+            </select>
+        </div>
+        <input id="divDate" type="date" />
+        <input id="divNote" placeholder="메모 (선택)" />
+        <button class="btn-dividend" onclick="addDividendRecord()">추가하기</button>
+      </div>
+    </div>
   </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
     import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
     import { getFirestore, doc, setDoc, getDoc, collection, getDocs, deleteDoc } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
-    import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyC1-dNvQQbb4B5j6N5hZCI4dT8yTVu8y8o",
       authDomain: "my-portfolio-app-ae0e6.firebaseapp.com",
+      databaseURL: "https://my-portfolio-app-ae0e6-default-rtdb.asia-southeast1.firebasedatabase.app",
       projectId: "my-portfolio-app-ae0e6",
       storageBucket: "my-portfolio-app-ae0e6.firebasestorage.app",
       messagingSenderId: "297732155840",
-      appId: "1:297732155840:web:5455116e2a03cfcccc0025",
-      measurementId: "G-4N0N8Q981S"
+      appId: "1:297732155840:web:e7b288878e27f69fcc0025",
+      measurementId: "G-HXMCWTC9PS"
     };
 
-    // Initialize Firebase
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
@@ -196,7 +270,6 @@
         const result = await signInWithPopup(auth, provider);
         currentUser = result.user;
         console.log('✅ 로그인:', currentUser.email);
-        // loadUserStocks();
       } catch (err) {
         console.error('❌ 로그인 오류:', err.message);
       }
@@ -214,24 +287,17 @@
       const chartNameInput = document.getElementById("chartNameInput");
       if (user) {
         currentUser = user;
-        // loginBtn.setAttribute("hidden", "hidden");
-        // logoutBtn.removeAttribute("hidden");
         loginBtn.style.display = 'none';
         logoutBtn.style.display = 'inline-block';
         firebaseSaveBtn.style.display = 'inline-block';
         chartNameInput.style.display = 'inline-block';
-
-        loadChartList(); // ✅ 로그인하면 charts 목록 불러오기
+        loadChartList();
       } else {
-        // loginBtn.removeAttribute("hidden");
-        // logoutBtn.setAttribute("hidden", "hidden");
         loginBtn.style.display = 'inline-block';
         logoutBtn.style.display = 'none';
         firebaseSaveBtn.style.display = 'none';
         chartNameInput.style.display = 'none';
-
-        const chartListDiv = document.getElementById('chartList');
-        chartListDiv.innerHTML = ''; // 로그아웃 시 charts 목록 지우기
+        document.getElementById('chartList').innerHTML = '';
       }
     });
 
@@ -245,107 +311,80 @@
         return;
       }
       await saveToFirebase(chartName);
-      chartNameInput.value = ''; // 저장 후 입력창 비우기
+      chartNameInput.value = '';
     });
 
     async function saveToFirebase(chartName) {
       const data = {
         items,
+        dividendRecords, // 배당금 데이터도 저장
         exchangeRate: getExchangeRate()
       };
-      console.log(`현재 사용자: ${currentUser.uid}`);
-      await setDoc(doc(db, 'users', currentUser.uid, 'charts', chartName), {
+      await setDoc(doc(db, 'dev_users', currentUser.uid, 'charts', chartName), {
         jsonData: JSON.stringify(data)
       });
       alert(`'${chartName}' 이름으로 저장되었습니다.`);
-      loadChartList(); // 차트 목록 새로고침
+      loadChartList();
     }
 
     async function loadChartList() {
       const chartListDiv = document.getElementById('chartList');
-      chartListDiv.innerHTML = ''; // 리스트 초기화
-
-      const chartsRef = collection(db, 'users', currentUser.uid, 'charts');
+      chartListDiv.innerHTML = '';
+      const chartsRef = collection(db, 'dev_users', currentUser.uid, 'charts');
       const snapshot = await getDocs(chartsRef);
 
       snapshot.forEach(docSnap => {
         const chartName = docSnap.id;
-
         const div = document.createElement('div');
         div.className = "flex items-center space-x-4";
+        div.style.marginBottom = "5px";
 
-        const nameSpan = document.createElement('span');
-        nameSpan.textContent = chartName;
-        nameSpan.className = "text-gray-700";
-
-        const loadButton = document.createElement('button');
-        loadButton.textContent = '불러오기';
-        loadButton.className = "bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 text-sm";
-        loadButton.addEventListener('click', () => loadChart(chartName));
-
-        const deleteButton = document.createElement('button');
-        deleteButton.textContent = '삭제하기';
-        deleteButton.className = "bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 text-sm";
-        deleteButton.addEventListener('click', (event) => {
-          const chartDiv = event.target.closest('div'); // 삭제 버튼의 부모 div 찾기
-          deleteChart(chartDiv, chartName);
-        });
-
-        div.appendChild(nameSpan);
-        div.appendChild(loadButton);
-        div.appendChild(deleteButton);
+        div.innerHTML = `
+          <span style="display:inline-block; width:150px; font-weight:bold;">${chartName}</span>
+          <button class="action-btn" style="background:#27ae60" onclick="window.loadChartClick('${chartName}')">불러오기</button>
+          <button class="action-btn" onclick="window.deleteChartClick(this, '${chartName}')">삭제하기</button>
+        `;
         chartListDiv.appendChild(div);
       });
 
       if (snapshot.empty) {
-        chartListDiv.innerHTML = '<p class="text-gray-500">저장된 차트가 없습니다.</p>';
+        chartListDiv.innerHTML = '<p style="color:#888;">저장된 차트가 없습니다.</p>';
       }
     }
 
-    async function loadChart(chartName) {
-      const chartDocRef = doc(db, 'users', currentUser.uid, 'charts', chartName);
+    // 모듈 스코프 함수를 전역으로 노출 (HTML onclick에서 접근 가능하도록)
+    window.loadChartClick = async (chartName) => {
+      const chartDocRef = doc(db, 'dev_users', currentUser.uid, 'charts', chartName);
       const chartDoc = await getDoc(chartDocRef);
-
       if (chartDoc.exists()) {
         const data = JSON.parse(chartDoc.data().jsonData);
-
-        items = data.items || [];
-        document.getElementById('exchangeRate').value = data.exchangeRate || 1300;
-        updateAll();
+        window.loadDataFromObject(data);
       } else {
         alert('차트를 찾을 수 없습니다.');
       }
-    }
+    };
 
-    async function deleteChart(selfElement, chartName) {
-      const chartDocRef = doc(db, 'users', currentUser.uid, 'charts', chartName);
-      const chartDoc = await getDoc(chartDocRef);
-
-      if (chartDoc.exists()) {
+    window.deleteChartClick = async (selfElement, chartName) => {
+        if(!confirm(`'${chartName}' 차트를 삭제하시겠습니까?`)) return;
+        const chartDocRef = doc(db, 'dev_users', currentUser.uid, 'charts', chartName);
         try {
-          // Firebase에서 차트 삭제
           await deleteDoc(chartDocRef);
           alert("삭제 완료!");
-          
-          // 화면에서 해당 차트 요소 지우기
-          selfElement.remove();
+          selfElement.parentElement.remove();
         } catch (error) {
           console.error("차트 삭제 오류:", error);
         }
-
-        // 차트 삭제 후 전체 업데이트
-        updateAll();
-      } else {
-        alert('차트를 찾을 수 없습니다.');
-      }
-    }
+    };
   </script>
 
   <script>
     let items = [];
+    let dividendRecords = [];
     let portfolioChart = null;
     let selectedCategories = new Set();
     let editingIndex = null;
+
+    // --- 기본 기능 ---
 
     function toggleForm() {
       const form = document.getElementById('form');
@@ -365,16 +404,13 @@
         alert('이름, 개수, 가격을 정확히 입력해주세요.');
         return;
       }
-
       const item = { name, amount, price, currency, categories, date };
-
       if (editingIndex !== null) {
         items[editingIndex] = item;
         editingIndex = null;
       } else {
         items.push(item);
       }
-
       clearForm();
       updateAll();
     }
@@ -420,6 +456,8 @@
       updateCategoryButtons();
       updateChart();
       updateTotal();
+      updateDividendList();
+      updateDividendSummary();
     }
 
     function updateList() {
@@ -440,68 +478,140 @@
       `).join('');
     }
 
+    // --- 배당금 관련 기능 ---
+
+    function openDividendModal() {
+      const datalist = document.getElementById('divStockList');
+      // 보유 종목 이름 자동완성
+      datalist.innerHTML = items.map(item => `<option value="${item.name}">`).join('');
+      
+      document.getElementById('divStockName').value = '';
+      document.getElementById('divTotalAmount').value = '';
+      document.getElementById('divDate').value = new Date().toISOString().split('T')[0];
+      document.getElementById('divNote').value = '';
+      document.getElementById('dividendModal').style.display = 'flex';
+    }
+
+    function closeDividendModal() {
+      document.getElementById('dividendModal').style.display = 'none';
+    }
+
+    function addDividendRecord() {
+      const stockName = document.getElementById('divStockName').value.trim();
+      const totalAmount = parseFloat(document.getElementById('divTotalAmount').value);
+      const currency = document.getElementById('divCurrency').value;
+      const paymentDate = document.getElementById('divDate').value;
+      const note = document.getElementById('divNote').value.trim();
+
+      if (!stockName || isNaN(totalAmount) || !paymentDate) {
+        alert('필수 정보를 입력해주세요 (종목명, 금액, 날짜)');
+        return;
+      }
+
+      dividendRecords.push({
+        id: Date.now().toString(36),
+        stockName,
+        totalAmount,
+        currency,
+        paymentDate,
+        note
+      });
+
+      closeDividendModal();
+      updateAll();
+    }
+
+    function deleteDividend(id) {
+        if(confirm('삭제하시겠습니까?')) {
+            dividendRecords = dividendRecords.filter(d => d.id !== id);
+            updateAll();
+        }
+    }
+
+    function updateDividendList() {
+        const container = document.getElementById('dividendListContainer');
+        const rate = getExchangeRate();
+        
+        if (dividendRecords.length === 0) {
+            container.innerHTML = '';
+            return;
+        }
+
+        const sorted = [...dividendRecords].sort((a, b) => b.paymentDate.localeCompare(a.paymentDate));
+
+        container.innerHTML = `
+            <h3>💰 배당금 내역 (${sorted.length}건)</h3>
+            <div class="dividend-list">
+                ${sorted.map(d => {
+                    const krw = d.currency === 'USD' ? d.totalAmount * rate : d.totalAmount;
+                    return `
+                        <div class="dividend-record">
+                            <div>
+                                <strong>${d.stockName}</strong> 
+                                <span style="color:#8e44ad; font-weight:bold;">+${d.currency==='USD'?'$':''}${d.totalAmount.toLocaleString()}${d.currency==='KRW'?'원':''}</span>
+                                <span style="color:#888; font-size:12px;">(${krw.toLocaleString()}원)</span>
+                                <br/>
+                                <span style="font-size:12px; color:#555;">${d.paymentDate} ${d.note ? ' · ' + d.note : ''}</span>
+                            </div>
+                            <button class="action-btn" onclick="deleteDividend('${d.id}')">🗑️</button>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        `;
+    }
+
+    function updateDividendSummary() {
+        const container = document.getElementById('dividendSummaryContainer');
+        if (dividendRecords.length === 0) {
+            container.innerHTML = '';
+            return;
+        }
+        const rate = getExchangeRate();
+        const total = dividendRecords.reduce((sum, d) => sum + (d.currency === 'USD' ? d.totalAmount * rate : d.totalAmount), 0);
+        
+        container.innerHTML = `
+            <div class="dividend-summary" style="text-align:center;">
+                <span style="font-size:14px; color:#555;">총 배당금 수익</span><br/>
+                <span style="font-size:20px; font-weight:bold; color:#8e44ad;">${total.toLocaleString()} 원</span>
+            </div>
+        `;
+    }
+
+
+    // --- 차트 및 카테고리 기능 ---
+
     function updateCategoryButtons() {
       const container = document.getElementById('categoryButtons');
       const allCategories = [...new Set(items.flatMap(i => i.categories))];
-      
       if (allCategories.length === 0) {
         container.innerHTML = '';
         return;
       }
-
-      let html = '';
-
-      // 전체 버튼 텍스트: 전체 선택 또는 전체 해제
       const isAllSelected = selectedCategories.size === allCategories.length;
       const allButtonText = isAllSelected ? '전체 해제' : '전체 선택';
 
-
-      // 전체 선택/해제 버튼 추가
-      html += `
-        <button onclick="toggleAllCategories()" 
-          class="${isAllSelected || selectedCategories.size === 0 ? 'active' : ''}">
-          ${allButtonText}
-        </button>
-      `;
-
-      html += allCategories.map(cat => `
-        <button onclick="toggleCategory('${cat}')" class="${selectedCategories.has(cat) ? 'active' : ''}">
-          ${cat}
-        </button>
-      `).join('');
-
+      let html = `<button onclick="toggleAllCategories()" class="${isAllSelected || selectedCategories.size === 0 ? 'active' : ''}">${allButtonText}</button>`;
+      html += allCategories.map(cat => `<button onclick="toggleCategory('${cat}')" class="${selectedCategories.has(cat) ? 'active' : ''}">${cat}</button>`).join('');
       container.innerHTML = html;
     }
 
     function toggleAllCategories() {
       const allCategories = [...new Set(items.flatMap(i => i.categories))];
-
-      if (selectedCategories.size === allCategories.length) {
-        selectedCategories.clear();
-      } else {
-        selectedCategories = new Set(allCategories);
-      }
-
-      updateCategoryButtons();
-      updateChart();
-      updateTotal();
+      if (selectedCategories.size === allCategories.length) selectedCategories.clear();
+      else selectedCategories = new Set(allCategories);
+      updateCategoryButtons(); updateChart(); updateTotal();
     }
 
     function toggleCategory(cat) {
-      if (selectedCategories.has(cat)) {
-        selectedCategories.delete(cat);
-      } else {
-        selectedCategories.add(cat);
-      }
-      updateCategoryButtons();
-      updateChart();
-      updateTotal();
+      if (selectedCategories.has(cat)) selectedCategories.delete(cat);
+      else selectedCategories.add(cat);
+      updateCategoryButtons(); updateChart(); updateTotal();
     }
 
     function updateChart() {
       const ctx = document.getElementById('portfolioChart').getContext('2d');
       const categorySums = {};
-
       items.forEach(item => {
         const value = getTotalValue(item);
         item.categories.forEach(cat => {
@@ -513,19 +623,13 @@
 
       const labels = Object.keys(categorySums);
       const values = Object.values(categorySums);
-
       if (portfolioChart) portfolioChart.destroy();
 
       portfolioChart = new Chart(ctx, {
         type: 'pie',
         data: {
           labels,
-          datasets: [{
-            data: values,
-            backgroundColor: [
-              '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'
-            ]
-          }]
+          datasets: [{ data: values, backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'] }]
         },
         options: {
           responsive: true,
@@ -533,19 +637,12 @@
             datalabels: {
               formatter: (value, context) => {
                 const sum = context.chart._metasets[0].total;
-                const percentage = ((value / sum) * 100).toFixed(1) + '%';
-                return percentage;
+                return ((value / sum) * 100).toFixed(1) + '%';
               },
-              color: '#fff',
-              font: {
-                weight: 'bold'
-              }
+              color: '#fff', font: { weight: 'bold' }
             },
             legend: { position: 'bottom' },
-            title: {
-              display: true,
-              text: document.getElementById('chartTitle').value
-            }
+            title: { display: true, text: document.getElementById('chartTitle').value }
           }
         },
         plugins: [ChartDataLabels]
@@ -563,44 +660,78 @@
       totalDiv.textContent = `총합: ${sum.toLocaleString()} 원`;
     }
 
+    // --- 저장 및 불러오기 (로컬/파일) ---
+
+    // 데이터를 전역 객체에 반영하는 함수 (Firebase load 등에서 사용)
+    window.loadDataFromObject = (data) => {
+        items = data.items || [];
+        dividendRecords = data.dividendRecords || [];
+        document.getElementById('exchangeRate').value = data.exchangeRate || 1300;
+        updateAll();
+        alert('데이터를 성공적으로 불러왔습니다!');
+    };
+
     function saveData() {
-      const data = {
-        items,
-        exchangeRate: getExchangeRate()
-      };
-      console.log(JSON.stringify(data));
+      const data = { items, dividendRecords, exchangeRate: getExchangeRate() };
       localStorage.setItem('portfolioData', JSON.stringify(data));
       alert('저장되었습니다.');
     }
 
     function loadData() {
       const data = localStorage.getItem('portfolioData');
-      if (data) {
-        const parsed = JSON.parse(data);
-        items = parsed.items || [];
-        document.getElementById('exchangeRate').value = parsed.exchangeRate || 1300;
-        updateAll();
-        alert('불러오기 완료!');
-      } else {
-        alert('저장된 데이터가 없습니다.');
-      }
+      if (data) window.loadDataFromObject(JSON.parse(data));
+      else alert('저장된 데이터가 없습니다.');
     }
 
     function downloadJSON() {
-      const blob = new Blob([JSON.stringify({ items, exchangeRate: getExchangeRate() }, null, 2)], { type: 'application/json' });
+      const blob = new Blob([JSON.stringify({ items, dividendRecords, exchangeRate: getExchangeRate() }, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      console.log(blob)
-      console.log(url)
       a.href = url;
       a.download = 'portfolio.json';
       a.click();
     }
 
+    function uploadFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          window.loadDataFromObject(JSON.parse(e.target.result));
+        } catch (e) { alert('JSON 형식이 올바르지 않습니다.'); }
+      };
+      reader.readAsText(file);
+      event.target.value = '';
+    }
+
+    // --- CSV 다운로드 및 업로드 핵심 로직 ---
+
     function downloadCSV() {
-      const header = '이름,개수,가격,통화,카테고리,날짜\n';
-      const rows = items.map(i => `${i.name},${i.amount},${i.price},${i.currency},"${i.categories.join('|')}",${i.date}`).join('\n');
-      const blob = new Blob([header + rows], { type: 'text/csv' });
+      // 1. BOM 추가 (엑셀 한글 깨짐 방지)
+      let csvContent = "\uFEFF";
+
+      // 2. 자산 섹션 작성
+      csvContent += "[보유 자산 목록]\n";
+      csvContent += "이름,개수,가격,통화,카테고리,날짜\n";
+      csvContent += items.map(i => 
+        `${i.name},${i.amount},${i.price},${i.currency},"${i.categories.join('|')}",${i.date}`
+      ).join('\n');
+      
+      csvContent += "\n\n"; // 섹션 구분
+
+      // 3. 배당금 섹션 작성
+      csvContent += "[배당금 기록]\n";
+      csvContent += "종목이름,배당금액,통화,지급일,메모\n";
+      
+      if (dividendRecords.length > 0) {
+        csvContent += dividendRecords.map(d => {
+            const safeNote = d.note ? d.note.replace(/"/g, '""') : '';
+            return `${d.stockName},${d.totalAmount},${d.currency},${d.paymentDate},"${safeNote}"`;
+        }).join('\n');
+      }
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -608,24 +739,86 @@
       a.click();
     }
 
-    function uploadFile(event) {
+    function uploadCSVFile(event) {
       const file = event.target.files[0];
       if (!file) return;
 
       const reader = new FileReader();
       reader.onload = function(e) {
         try {
-          const data = JSON.parse(e.target.result);
-          items = data.items || [];
-          document.getElementById('exchangeRate').value = data.exchangeRate || 1300;
-          updateAll();
-          alert('파일 불러오기 완료!');
-        } catch (e) {
-          alert('JSON 형식이 올바르지 않습니다.');
+          const text = e.target.result;
+          const lines = text.split('\n');
+          
+          let currentSection = 'items'; // 기본값은 자산 목록 (헤더 없는 구버전 파일 호환)
+          const newItems = [];
+          const newDividends = [];
+
+          for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (!line) continue;
+
+            // 섹션 감지
+            if (line.includes('[보유 자산 목록]')) { currentSection = 'items'; continue; }
+            if (line.includes('[배당금 기록]')) { currentSection = 'dividends'; continue; }
+            
+            // 헤더 건너뛰기
+            if (line.startsWith('이름,개수') || line.startsWith('Name,Amount') || line.startsWith('종목이름,배당금액')) continue;
+
+            if (currentSection === 'items') {
+                // 자산 데이터 파싱
+                const match = line.match(/^(.*?),([\d.]+),([\d.]+),(KRW|USD),"([^"]*)",(\d{4}-\d{2}-\d{2})$/);
+                if (match) {
+                    const [, name, amount, price, currency, categories, date] = match;
+                    newItems.push({
+                        name: name.trim(),
+                        amount: parseFloat(amount),
+                        price: parseFloat(price),
+                        currency: currency.trim(),
+                        categories: categories.split('|').map(c => c.trim()),
+                        date: date.trim()
+                    });
+                }
+            } else if (currentSection === 'dividends') {
+                // 배당금 데이터 파싱: 종목이름,금액,통화,날짜,"메모"
+                // 간단한 파싱 (메모에 콤마가 있을 경우 정규식 필요하지만 여기선 간단히 split 처리 보완)
+                // 정규식: 이름, 금액, 통화, 날짜, "메모"
+                const matchDiv = line.match(/^(.*?),([\d.]+),(KRW|USD),(\d{4}-\d{2}-\d{2}),"(.*)"$/);
+                if (matchDiv) {
+                    const [, stockName, totalAmount, currency, paymentDate, note] = matchDiv;
+                    newDividends.push({
+                        id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+                        stockName: stockName.trim(),
+                        totalAmount: parseFloat(totalAmount),
+                        currency: currency.trim(),
+                        paymentDate: paymentDate.trim(),
+                        note: note.trim()
+                    });
+                }
+            }
+          }
+
+          if (newItems.length > 0 || newDividends.length > 0) {
+              items = newItems;
+              dividendRecords = newDividends;
+              updateAll();
+              alert(`불러오기 완료! (자산: ${newItems.length}개, 배당: ${newDividends.length}개)`);
+          } else {
+              alert('데이터를 찾을 수 없습니다.');
+          }
+
+        } catch (err) {
+          alert('CSV 형식이 올바르지 않습니다: ' + err.message);
+          console.error(err);
         }
       };
       reader.readAsText(file);
+      event.target.value = '';
     }
+
+    // 모달 닫기 버튼 이벤트 연결
+    document.getElementById('dividendModal').addEventListener('click', function(e) {
+        if (e.target === this) closeDividendModal();
+    });
 
     updateAll();
   </script>
