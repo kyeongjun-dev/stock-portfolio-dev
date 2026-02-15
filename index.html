@@ -8,22 +8,55 @@
   <style>
     @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;600&display=swap');
 
+    :root {
+      --bg-primary: #f8f9fa;
+      --bg-secondary: #fff;
+      --bg-form: #fff;
+      --text-primary: #333;
+      --text-secondary: #555;
+      --text-heading: #2c3e50;
+      --border-color: #ccc;
+      --shadow: rgba(0,0,0,0.1);
+      --dividend-record-bg: #f1f3f5;
+      --modal-bg: white;
+      --overlay-bg: rgba(0,0,0,0.5);
+      --cat-btn-bg: white;
+    }
+
+    [data-theme="dark"] {
+      --bg-primary: #1a1a2e;
+      --bg-secondary: #16213e;
+      --bg-form: #0f3460;
+      --text-primary: #e0e0e0;
+      --text-secondary: #b0b0b0;
+      --text-heading: #e0e0e0;
+      --border-color: #444;
+      --shadow: rgba(0,0,0,0.4);
+      --dividend-record-bg: #16213e;
+      --modal-bg: #1a1a2e;
+      --overlay-bg: rgba(0,0,0,0.7);
+      --cat-btn-bg: #16213e;
+    }
+
     body {
       font-family: 'IBM Plex Sans KR', sans-serif;
       padding: 20px;
-      background-color: #f8f9fa;
-      color: #333;
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
       max-width: 700px;
       margin: 0 auto;
+      transition: background-color 0.3s, color 0.3s;
     }
-    h2, h3 { color: #2c3e50; font-weight: 600; }
+    h2, h3 { color: var(--text-heading); font-weight: 600; }
     input, select, button {
       margin: 5px;
       padding: 8px 10px;
       border-radius: 8px;
-      border: 1px solid #ccc;
+      border: 1px solid var(--border-color);
       font-size: 14px;
       font-family: 'IBM Plex Sans KR', sans-serif;
+      background-color: var(--bg-secondary);
+      color: var(--text-primary);
     }
     button {
       background-color: #3498db;
@@ -57,7 +90,7 @@
       padding: 8px 12px;
       font-weight: bold;
       border: 2px solid #27ae60;
-      background-color: white;
+      background-color: var(--cat-btn-bg);
       color: #27ae60;
       font-family: 'IBM Plex Sans KR', sans-serif;
     }
@@ -106,46 +139,57 @@
       font-weight: bold;
       margin: 5px;
     }
+    .theme-toggle {
+      background-color: #555;
+      font-size: 13px;
+      padding: 6px 12px;
+    }
+    .theme-toggle:hover {
+      background-color: #333;
+    }
 
     /* 배당금 모달 스타일 */
     .modal-overlay {
       display: none;
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.5);
+      background: var(--overlay-bg);
       z-index: 1000;
       justify-content: center;
       align-items: center;
     }
     .modal-content {
-      background: white;
+      background: var(--modal-bg);
       padding: 20px;
       border-radius: 12px;
       width: 90%;
       max-width: 450px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      box-shadow: 0 4px 15px var(--shadow);
     }
     .dividend-record {
       display: flex;
       justify-content: space-between;
       align-items: center;
       margin-bottom: 6px;
-      background: #f1f3f5;
+      background: var(--dividend-record-bg);
       padding: 8px 12px;
       border-radius: 8px;
       font-size: 13px;
     }
     .dividend-summary {
       margin-top: 20px;
-      background: white;
+      background: var(--bg-secondary);
       padding: 15px;
       border-radius: 8px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      box-shadow: 0 1px 3px var(--shadow);
     }
   </style>
 </head>
 <body>
-  <h2>📊 웹 포트폴리오 차트</h2>
+  <div style="display:flex; justify-content:space-between; align-items:center;">
+    <h2>📊 웹 포트폴리오 차트</h2>
+    <button class="theme-toggle" onclick="toggleTheme()" id="themeToggleBtn">🌙 Dark</button>
+  </div>
   <button id="loginBtn" hidden class="bg-red-500 text-white px-4 py-2 rounded">Google 로그인</button>
   <button id="logoutBtn" hidden class="hidden text-sm underline text-gray-500">로그아웃</button>
   
@@ -173,7 +217,7 @@
     <button class="btn-dividend" onclick="openDividendModal()">+ 배당금 추가</button>
   </div>
 
-  <div id="form" style="display:none; margin-top:10px; padding:10px; background:#fff; border-radius:8px;">
+  <div id="form" style="display:none; margin-top:10px; padding:10px; background:var(--bg-secondary); border-radius:8px;">
     <input id="name" placeholder="종목 이름" />
     <input id="amount" type="number" placeholder="개수" />
     <input id="price" type="number" placeholder="가격" />
@@ -337,11 +381,13 @@
         const chartName = docSnap.id;
         const div = document.createElement('div');
         div.className = "flex items-center space-x-4";
-        div.style.marginBottom = "5px";
+        div.style.cssText = "margin-bottom:5px; display:flex; flex-wrap:wrap; align-items:center; gap:3px;";
 
         div.innerHTML = `
           <span style="display:inline-block; width:150px; font-weight:bold;">${chartName}</span>
           <button class="action-btn" style="background:#27ae60" onclick="window.loadChartClick('${chartName}')">불러오기</button>
+          <button class="action-btn" style="background:#3498db" onclick="window.downloadChartJSON('${chartName}')">JSON</button>
+          <button class="action-btn" style="background:#3498db" onclick="window.downloadChartCSV('${chartName}')">CSV</button>
           <button class="action-btn" onclick="window.deleteChartClick(this, '${chartName}')">삭제하기</button>
         `;
         chartListDiv.appendChild(div);
@@ -364,6 +410,49 @@
       }
     };
 
+    window.downloadChartJSON = async (chartName) => {
+      const chartDocRef = doc(db, 'dev_users', currentUser.uid, 'charts', chartName);
+      const chartDoc = await getDoc(chartDocRef);
+      if (!chartDoc.exists()) { alert('차트를 찾을 수 없습니다.'); return; }
+      const data = JSON.parse(chartDoc.data().jsonData);
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `${chartName}.json`; a.click();
+      URL.revokeObjectURL(url);
+    };
+
+    window.downloadChartCSV = async (chartName) => {
+      const chartDocRef = doc(db, 'dev_users', currentUser.uid, 'charts', chartName);
+      const chartDoc = await getDoc(chartDocRef);
+      if (!chartDoc.exists()) { alert('차트를 찾을 수 없습니다.'); return; }
+      const data = JSON.parse(chartDoc.data().jsonData);
+      const chartItems = data.items || [];
+      const chartDividends = data.dividendRecords || [];
+
+      let csvContent = "\uFEFF";
+      csvContent += "[보유 자산 목록]\n";
+      csvContent += "이름,개수,가격,통화,카테고리,날짜\n";
+      csvContent += chartItems.map(i =>
+        `${i.name},${i.amount},${i.price},${i.currency},"${i.categories.join('|')}",${i.date}`
+      ).join('\n');
+      csvContent += "\n\n";
+      csvContent += "[배당금 기록]\n";
+      csvContent += "종목이름,배당금액,통화,지급일,메모\n";
+      if (chartDividends.length > 0) {
+        csvContent += chartDividends.map(d => {
+          const safeNote = d.note ? d.note.replace(/"/g, '""') : '';
+          return `${d.stockName},${d.totalAmount},${d.currency},${d.paymentDate},"${safeNote}"`;
+        }).join('\n');
+      }
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `${chartName}.csv`; a.click();
+      URL.revokeObjectURL(url);
+    };
+
     window.deleteChartClick = async (selfElement, chartName) => {
         if(!confirm(`'${chartName}' 차트를 삭제하시겠습니까?`)) return;
         const chartDocRef = doc(db, 'dev_users', currentUser.uid, 'charts', chartName);
@@ -383,6 +472,30 @@
     let portfolioChart = null;
     let selectedCategories = new Set();
     let editingIndex = null;
+
+    // --- 테마 토글 ---
+    function toggleTheme() {
+      const html = document.documentElement;
+      const btn = document.getElementById('themeToggleBtn');
+      if (html.getAttribute('data-theme') === 'dark') {
+        html.removeAttribute('data-theme');
+        btn.textContent = '🌙 Dark';
+        localStorage.setItem('theme', 'light');
+      } else {
+        html.setAttribute('data-theme', 'dark');
+        btn.textContent = '☀️ Light';
+        localStorage.setItem('theme', 'dark');
+      }
+    }
+
+    // 저장된 테마 복원
+    (function() {
+      const saved = localStorage.getItem('theme');
+      if (saved === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        document.getElementById('themeToggleBtn').textContent = '☀️ Light';
+      }
+    })();
 
     // --- 기본 기능 ---
 
@@ -463,10 +576,10 @@
     function updateList() {
       const list = document.getElementById('itemList');
       list.innerHTML = items.map((i, idx) => `
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; background: #fff; padding: 10px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; background: var(--bg-secondary); padding: 10px; border-radius: 8px; box-shadow: 0 1px 3px var(--shadow);">
           <div style="text-align: left;">
             <div>📌 ${i.name} - ${i.amount}개 x ${i.price}${i.currency} = ${getTotalValue(i).toLocaleString()}원</div>
-            <div style="margin-top: 4px; font-size: 13px; color: #555;">
+            <div style="margin-top: 4px; font-size: 13px; color: var(--text-secondary);">
               [${i.categories.join(', ')} | ${i.date}]
             </div>
           </div>
@@ -668,7 +781,7 @@
         dividendRecords = data.dividendRecords || [];
         document.getElementById('exchangeRate').value = data.exchangeRate || 1300;
         updateAll();
-        alert('데이터를 성공적으로 불러왔습니다!');
+        // alert('데이터를 성공적으로 불러왔습니다!');
     };
 
     function saveData() {
