@@ -21,6 +21,16 @@
       --modal-bg: white;
       --overlay-bg: rgba(0,0,0,0.5);
       --cat-btn-bg: white;
+      --btn-primary: #3498db;
+      --btn-primary-hover: #2980b9;
+      --btn-danger: #e74c3c;
+      --btn-edit: #f39c12;
+      --btn-dividend: #8e44ad;
+      --btn-dividend-hover: #9b59b6;
+      --btn-save: #27ae60;
+      --file-label-bg: #3498db;
+      --chart-legend-color: #666;
+      --chart-title-color: #333;
     }
 
     [data-theme="dark"] {
@@ -36,6 +46,16 @@
       --modal-bg: #1a1a2e;
       --overlay-bg: rgba(0,0,0,0.7);
       --cat-btn-bg: #16213e;
+      --btn-primary: #1a6fb5;
+      --btn-primary-hover: #155a94;
+      --btn-danger: #a93226;
+      --btn-edit: #b87a0a;
+      --btn-dividend: #6c3483;
+      --btn-dividend-hover: #7d3c98;
+      --btn-save: #1e8449;
+      --file-label-bg: #1a6fb5;
+      --chart-legend-color: #ccc;
+      --chart-title-color: #e0e0e0;
     }
 
     body {
@@ -59,12 +79,12 @@
       color: var(--text-primary);
     }
     button {
-      background-color: #3498db;
+      background-color: var(--btn-primary);
       color: white;
       cursor: pointer;
       font-weight: bold;
     }
-    button:hover { background-color: #2980b9; }
+    button:hover { background-color: var(--btn-primary-hover); }
     .item-list, .dividend-list { margin-top: 15px; font-size: 14px; }
     #portfolioChartContainer {
       position: relative;
@@ -110,28 +130,28 @@
       margin-top: 5px;
     }
     .action-btn {
-      background-color: #e74c3c;
+      background-color: var(--btn-danger);
       margin-left: 5px;
       padding: 4px 8px;
       font-size: 12px;
     }
     .edit-btn {
-      background-color: #f39c12;
+      background-color: var(--btn-edit);
       padding: 4px 8px;
       font-size: 12px;
     }
     .btn-dividend {
-      background-color: #8e44ad;
+      background-color: var(--btn-dividend);
     }
     .btn-dividend:hover {
-      background-color: #9b59b6;
+      background-color: var(--btn-dividend-hover);
     }
     input[type="file"] {
       display: none;
     }
     .file-label {
       display: inline-block;
-      background-color: #3498db;
+      background-color: var(--file-label-bg);
       color: white;
       padding: 8px 12px;
       border-radius: 8px;
@@ -385,9 +405,9 @@
 
         div.innerHTML = `
           <span style="display:inline-block; width:150px; font-weight:bold;">${chartName}</span>
-          <button class="action-btn" style="background:#27ae60" onclick="window.loadChartClick('${chartName}')">불러오기</button>
-          <button class="action-btn" style="background:#3498db" onclick="window.downloadChartJSON('${chartName}')">JSON</button>
-          <button class="action-btn" style="background:#3498db" onclick="window.downloadChartCSV('${chartName}')">CSV</button>
+          <button class="action-btn" style="background:var(--btn-save)" onclick="window.loadChartClick('${chartName}')">불러오기</button>
+          <button class="action-btn" style="background:var(--btn-primary)" onclick="window.downloadChartJSON('${chartName}')">JSON</button>
+          <button class="action-btn" style="background:var(--btn-primary)" onclick="window.downloadChartCSV('${chartName}')">CSV</button>
           <button class="action-btn" onclick="window.deleteChartClick(this, '${chartName}')">삭제하기</button>
         `;
         chartListDiv.appendChild(div);
@@ -486,6 +506,7 @@
         btn.textContent = '☀️ Light';
         localStorage.setItem('theme', 'dark');
       }
+      updateChart();
     }
 
     // 저장된 테마 복원
@@ -722,6 +743,10 @@
       updateCategoryButtons(); updateChart(); updateTotal();
     }
 
+    function isDarkMode() {
+      return document.documentElement.getAttribute('data-theme') === 'dark';
+    }
+
     function updateChart() {
       const ctx = document.getElementById('portfolioChart').getContext('2d');
       const categorySums = {};
@@ -738,11 +763,21 @@
       const values = Object.values(categorySums);
       if (portfolioChart) portfolioChart.destroy();
 
+      const dark = isDarkMode();
+      const legendColor = dark ? '#ccc' : '#666';
+      const titleColor = dark ? '#e0e0e0' : '#333';
+      const borderColor = dark ? '#1a1a2e' : '#fff';
+
       portfolioChart = new Chart(ctx, {
         type: 'pie',
         data: {
           labels,
-          datasets: [{ data: values, backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'] }]
+          datasets: [{
+            data: values,
+            backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'],
+            borderColor: borderColor,
+            borderWidth: 2
+          }]
         },
         options: {
           responsive: true,
@@ -754,8 +789,15 @@
               },
               color: '#fff', font: { weight: 'bold' }
             },
-            legend: { position: 'bottom' },
-            title: { display: true, text: document.getElementById('chartTitle').value }
+            legend: {
+              position: 'bottom',
+              labels: { color: legendColor }
+            },
+            title: {
+              display: true,
+              text: document.getElementById('chartTitle').value,
+              color: titleColor
+            }
           }
         },
         plugins: [ChartDataLabels]
