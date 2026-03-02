@@ -188,6 +188,21 @@
       background-color: #27ae60;
       color: white;
     }
+    .cat-delete-btn {
+      background: none !important;
+      border: none !important;
+      color: var(--text-secondary) !important;
+      font-size: 14px !important;
+      padding: 0 0 0 4px !important;
+      margin: 0 !important;
+      min-height: auto !important;
+      cursor: pointer;
+      opacity: 0.7;
+    }
+    .cat-delete-btn:hover {
+      opacity: 1;
+      color: var(--btn-danger) !important;
+    }
     .new-cat-row {
       display: flex;
       gap: 5px;
@@ -607,6 +622,7 @@
     // --- 기본 기능 ---
 
     let modalSelectedCategories = new Set();
+    let modalNewCategories = new Set();
 
     function getAllCategories() {
       return [...new Set(items.flatMap(i => i.categories))];
@@ -616,9 +632,12 @@
       const container = document.getElementById('modalCategoryButtons');
       const existingCats = getAllCategories();
       const allCats = [...new Set([...existingCats, ...modalSelectedCategories])];
-      container.innerHTML = allCats.map(cat =>
-        `<button type="button" class="${modalSelectedCategories.has(cat) ? 'active' : ''}" onclick="toggleModalCategory('${cat}')">${cat}</button>`
-      ).join('');
+      container.innerHTML = allCats.map(cat => {
+        const isNew = modalNewCategories.has(cat);
+        const isActive = modalSelectedCategories.has(cat);
+        const deleteBtn = isNew ? `<span class="cat-delete-btn" onclick="event.stopPropagation(); removeNewCategory('${cat}')">✕</span>` : '';
+        return `<button type="button" class="${isActive ? 'active' : ''}" onclick="toggleModalCategory('${cat}')">${cat}${deleteBtn}</button>`;
+      }).join('');
     }
 
     function toggleModalCategory(cat) {
@@ -632,7 +651,16 @@
       const cat = input.value.trim();
       if (!cat) return;
       modalSelectedCategories.add(cat);
+      if (!getAllCategories().includes(cat)) {
+        modalNewCategories.add(cat);
+      }
       input.value = '';
+      renderModalCategoryButtons();
+    }
+
+    function removeNewCategory(cat) {
+      modalNewCategories.delete(cat);
+      modalSelectedCategories.delete(cat);
       renderModalCategoryButtons();
     }
 
@@ -645,6 +673,7 @@
       document.getElementById('currency').value = 'KRW';
       document.getElementById('stockDate').value = new Date().toISOString().split('T')[0];
       modalSelectedCategories.clear();
+      modalNewCategories.clear();
       editingIndex = null;
 
       if (index !== undefined) {
