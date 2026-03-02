@@ -614,7 +614,8 @@
 
     function renderModalCategoryButtons() {
       const container = document.getElementById('modalCategoryButtons');
-      const allCats = getAllCategories();
+      const existingCats = getAllCategories();
+      const allCats = [...new Set([...existingCats, ...modalSelectedCategories])];
       container.innerHTML = allCats.map(cat =>
         `<button type="button" class="${modalSelectedCategories.has(cat) ? 'active' : ''}" onclick="toggleModalCategory('${cat}')">${cat}</button>`
       ).join('');
