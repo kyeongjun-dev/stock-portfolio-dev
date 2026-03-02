@@ -159,6 +159,64 @@
       font-weight: bold;
       margin: 5px;
     }
+    .modal-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 2px;
+    }
+    .modal-field {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .category-select-area {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-top: 4px;
+    }
+    .category-select-area button {
+      min-height: 30px;
+      padding: 4px 10px;
+      font-size: 12px;
+      border: 2px solid #27ae60;
+      background-color: var(--cat-btn-bg);
+      color: #27ae60;
+    }
+    .category-select-area button.active {
+      background-color: #27ae60;
+      color: white;
+    }
+    .cat-delete-btn {
+      background: none !important;
+      border: none !important;
+      color: var(--text-secondary) !important;
+      font-size: 14px !important;
+      padding: 0 0 0 4px !important;
+      margin: 0 !important;
+      min-height: auto !important;
+      cursor: pointer;
+      opacity: 0.7;
+    }
+    .cat-delete-btn:hover {
+      opacity: 1;
+      color: var(--btn-danger) !important;
+    }
+    .new-cat-row {
+      display: flex;
+      gap: 5px;
+      margin-top: 4px;
+    }
+    .new-cat-row input {
+      flex: 1;
+      font-size: 13px;
+      padding: 4px 8px;
+    }
+    .new-cat-row button {
+      font-size: 12px;
+      padding: 4px 10px;
+    }
     .theme-toggle {
       background-color: #555;
       font-size: 13px;
@@ -233,20 +291,51 @@
   </div>
   <br/>
   <div style="display:flex; gap:5px; flex-wrap:wrap;">
-    <button onclick="toggleForm()">+ 종목 추가</button>
+    <button onclick="openStockModal()">+ 종목 추가</button>
     <button class="btn-dividend" onclick="openDividendModal()">+ 배당금 추가</button>
   </div>
 
-  <div id="form" style="display:none; margin-top:10px; padding:10px; background:var(--bg-secondary); border-radius:8px;">
-    <input id="name" placeholder="종목 이름" />
-    <input id="amount" type="number" placeholder="개수" />
-    <input id="price" type="number" placeholder="가격" />
-    <select id="currency">
-      <option value="KRW">원</option>
-      <option value="USD">달러</option>
-    </select>
-    <input id="category" placeholder="카테고리 (쉼표로 구분)" />
-    <button onclick="submitItem()">확인</button>
+  <div class="modal-overlay" id="stockModal">
+    <div class="modal-content">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+        <h3 id="stockModalTitle">📌 종목 추가</h3>
+        <button onclick="closeStockModal()" style="background:transparent; color:#999; border:none; font-size:20px;">✕</button>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <div class="modal-field">
+          <label class="modal-label">종목 이름</label>
+          <input id="name" placeholder="종목 이름" />
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">개수</label>
+          <input id="amount" type="number" placeholder="개수" />
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">가격</label>
+          <input id="price" type="number" placeholder="가격" />
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">통화</label>
+          <select id="currency">
+            <option value="KRW">원</option>
+            <option value="USD">달러</option>
+          </select>
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">카테고리</label>
+          <div class="category-select-area" id="modalCategoryButtons"></div>
+          <div class="new-cat-row">
+            <input id="newCategoryInput" placeholder="새 카테고리 입력" />
+            <button onclick="addNewCategory()">추가</button>
+          </div>
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">날짜</label>
+          <input id="stockDate" type="date" />
+        </div>
+        <button id="stockSubmitBtn" onclick="submitItem()">추가하기</button>
+      </div>
+    </div>
   </div>
 
   <div style="margin-top:15px;">
@@ -284,22 +373,34 @@
   <div class="modal-overlay" id="dividendModal">
     <div class="modal-content">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-        <h3>💰 배당금 기록</h3>
+        <h3 id="dividendModalTitle">💰 배당금 추가</h3>
         <button onclick="closeDividendModal()" style="background:transparent; color:#999; border:none; font-size:20px;">✕</button>
       </div>
       <div style="display:flex; flex-direction:column; gap:8px;">
-        <input id="divStockName" list="divStockList" placeholder="종목이름 (직접입력 또는 선택)" />
-        <datalist id="divStockList"></datalist>
-        <div style="display:flex; gap:5px;">
+        <div class="modal-field">
+          <label class="modal-label">종목이름</label>
+          <input id="divStockName" list="divStockList" placeholder="직접입력 또는 선택" />
+          <datalist id="divStockList"></datalist>
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">배당금액 / 통화</label>
+          <div style="display:flex; gap:5px;">
             <input id="divTotalAmount" type="number" step="0.01" placeholder="배당금액" style="flex:1" />
             <select id="divCurrency" style="width: 80px;">
               <option value="KRW">KRW</option>
               <option value="USD">USD</option>
             </select>
+          </div>
         </div>
-        <input id="divDate" type="date" />
-        <input id="divNote" placeholder="메모 (선택)" />
-        <button class="btn-dividend" onclick="addDividendRecord()">추가하기</button>
+        <div class="modal-field">
+          <label class="modal-label">지급일</label>
+          <input id="divDate" type="date" />
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">메모 (선택)</label>
+          <input id="divNote" placeholder="메모" />
+        </div>
+        <button class="btn-dividend" id="dividendSubmitBtn" onclick="addDividendRecord()">추가하기</button>
       </div>
     </div>
   </div>
@@ -520,10 +621,83 @@
 
     // --- 기본 기능 ---
 
-    function toggleForm() {
-      const form = document.getElementById('form');
-      form.style.display = form.style.display === 'none' ? 'block' : 'none';
-      if (form.style.display === 'none') clearForm();
+    let modalSelectedCategories = new Set();
+    let modalNewCategories = new Set();
+
+    function getAllCategories() {
+      return [...new Set(items.flatMap(i => i.categories))];
+    }
+
+    function renderModalCategoryButtons() {
+      const container = document.getElementById('modalCategoryButtons');
+      const existingCats = getAllCategories();
+      const allCats = [...new Set([...existingCats, ...modalSelectedCategories])];
+      container.innerHTML = allCats.map(cat => {
+        const isNew = modalNewCategories.has(cat);
+        const isActive = modalSelectedCategories.has(cat);
+        const deleteBtn = isNew ? `<span class="cat-delete-btn" onclick="event.stopPropagation(); removeNewCategory('${cat}')">✕</span>` : '';
+        return `<button type="button" class="${isActive ? 'active' : ''}" onclick="toggleModalCategory('${cat}')">${cat}${deleteBtn}</button>`;
+      }).join('');
+    }
+
+    function toggleModalCategory(cat) {
+      if (modalSelectedCategories.has(cat)) modalSelectedCategories.delete(cat);
+      else modalSelectedCategories.add(cat);
+      renderModalCategoryButtons();
+    }
+
+    function addNewCategory() {
+      const input = document.getElementById('newCategoryInput');
+      const cat = input.value.trim();
+      if (!cat) return;
+      modalSelectedCategories.add(cat);
+      if (!getAllCategories().includes(cat)) {
+        modalNewCategories.add(cat);
+      }
+      input.value = '';
+      renderModalCategoryButtons();
+    }
+
+    function removeNewCategory(cat) {
+      modalNewCategories.delete(cat);
+      modalSelectedCategories.delete(cat);
+      renderModalCategoryButtons();
+    }
+
+    function openStockModal(index) {
+      const title = document.getElementById('stockModalTitle');
+      const btn = document.getElementById('stockSubmitBtn');
+      document.getElementById('name').value = '';
+      document.getElementById('amount').value = '';
+      document.getElementById('price').value = '';
+      document.getElementById('currency').value = 'KRW';
+      document.getElementById('stockDate').value = new Date().toISOString().split('T')[0];
+      modalSelectedCategories.clear();
+      modalNewCategories.clear();
+      editingIndex = null;
+
+      if (index !== undefined) {
+        const item = items[index];
+        document.getElementById('name').value = item.name;
+        document.getElementById('amount').value = item.amount;
+        document.getElementById('price').value = item.price;
+        document.getElementById('currency').value = item.currency;
+        document.getElementById('stockDate').value = item.date;
+        item.categories.forEach(c => modalSelectedCategories.add(c));
+        editingIndex = index;
+        title.textContent = '📌 종목 수정';
+        btn.textContent = '수정하기';
+      } else {
+        title.textContent = '📌 종목 추가';
+        btn.textContent = '추가하기';
+      }
+      renderModalCategoryButtons();
+      document.getElementById('stockModal').style.display = 'flex';
+    }
+
+    function closeStockModal() {
+      document.getElementById('stockModal').style.display = 'none';
+      editingIndex = null;
     }
 
     function submitItem() {
@@ -531,8 +705,8 @@
       const amount = parseFloat(document.getElementById('amount').value);
       const price = parseFloat(document.getElementById('price').value);
       const currency = document.getElementById('currency').value;
-      const categories = document.getElementById('category').value.split(',').map(c => c.trim()).filter(c => c);
-      const date = new Date().toISOString().split('T')[0];
+      const categories = [...modalSelectedCategories];
+      const date = document.getElementById('stockDate').value;
 
       if (!name || isNaN(amount) || isNaN(price)) {
         alert('이름, 개수, 가격을 정확히 입력해주세요.');
@@ -545,19 +719,12 @@
       } else {
         items.push(item);
       }
-      clearForm();
+      closeStockModal();
       updateAll();
     }
 
     function editItem(index) {
-      const item = items[index];
-      document.getElementById('name').value = item.name;
-      document.getElementById('amount').value = item.amount;
-      document.getElementById('price').value = item.price;
-      document.getElementById('currency').value = item.currency;
-      document.getElementById('category').value = item.categories.join(', ');
-      editingIndex = index;
-      document.getElementById('form').style.display = 'block';
+      openStockModal(index);
     }
 
     function deleteItem(index) {
@@ -565,15 +732,6 @@
         items.splice(index, 1);
         updateAll();
       }
-    }
-
-    function clearForm() {
-      document.getElementById('name').value = '';
-      document.getElementById('amount').value = '';
-      document.getElementById('price').value = '';
-      document.getElementById('currency').value = 'KRW';
-      document.getElementById('category').value = '';
-      editingIndex = null;
     }
 
     function getExchangeRate() {
@@ -614,20 +772,43 @@
 
     // --- 배당금 관련 기능 ---
 
-    function openDividendModal() {
+    let editingDividendId = null;
+
+    function openDividendModal(id) {
       const datalist = document.getElementById('divStockList');
-      // 보유 종목 이름 자동완성
       datalist.innerHTML = items.map(item => `<option value="${item.name}">`).join('');
-      
+      const title = document.getElementById('dividendModalTitle');
+      const btn = document.getElementById('dividendSubmitBtn');
+
       document.getElementById('divStockName').value = '';
       document.getElementById('divTotalAmount').value = '';
+      document.getElementById('divCurrency').value = 'KRW';
       document.getElementById('divDate').value = new Date().toISOString().split('T')[0];
       document.getElementById('divNote').value = '';
+      editingDividendId = null;
+
+      if (id !== undefined) {
+        const record = dividendRecords.find(d => d.id === id);
+        if (record) {
+          document.getElementById('divStockName').value = record.stockName;
+          document.getElementById('divTotalAmount').value = record.totalAmount;
+          document.getElementById('divCurrency').value = record.currency;
+          document.getElementById('divDate').value = record.paymentDate;
+          document.getElementById('divNote').value = record.note || '';
+          editingDividendId = id;
+          title.textContent = '💰 배당금 수정';
+          btn.textContent = '수정하기';
+        }
+      } else {
+        title.textContent = '💰 배당금 추가';
+        btn.textContent = '추가하기';
+      }
       document.getElementById('dividendModal').style.display = 'flex';
     }
 
     function closeDividendModal() {
       document.getElementById('dividendModal').style.display = 'none';
+      editingDividendId = null;
     }
 
     function addDividendRecord() {
@@ -642,17 +823,28 @@
         return;
       }
 
-      dividendRecords.push({
-        id: Date.now().toString(36),
-        stockName,
-        totalAmount,
-        currency,
-        paymentDate,
-        note
-      });
+      if (editingDividendId) {
+        const idx = dividendRecords.findIndex(d => d.id === editingDividendId);
+        if (idx !== -1) {
+          dividendRecords[idx] = { ...dividendRecords[idx], stockName, totalAmount, currency, paymentDate, note };
+        }
+      } else {
+        dividendRecords.push({
+          id: Date.now().toString(36),
+          stockName,
+          totalAmount,
+          currency,
+          paymentDate,
+          note
+        });
+      }
 
       closeDividendModal();
       updateAll();
+    }
+
+    function editDividend(id) {
+      openDividendModal(id);
     }
 
     function deleteDividend(id) {
@@ -687,7 +879,10 @@
                                 <br/>
                                 <span style="font-size:12px; color:#555;">${d.paymentDate} ${d.note ? ' · ' + d.note : ''}</span>
                             </div>
-                            <button class="action-btn" onclick="deleteDividend('${d.id}')">🗑️</button>
+                            <div>
+                                <button class="edit-btn" onclick="editDividend('${d.id}')">✏️</button>
+                                <button class="action-btn" onclick="deleteDividend('${d.id}')">🗑️</button>
+                            </div>
                         </div>
                     `;
                 }).join('')}
@@ -970,9 +1165,16 @@
       event.target.value = '';
     }
 
-    // 모달 닫기 버튼 이벤트 연결
+    // 모달 배경 클릭 닫기 이벤트 연결
     document.getElementById('dividendModal').addEventListener('click', function(e) {
         if (e.target === this) closeDividendModal();
+    });
+    document.getElementById('stockModal').addEventListener('click', function(e) {
+        if (e.target === this) closeStockModal();
+    });
+    // 새 카테고리 Enter 키 입력 지원
+    document.getElementById('newCategoryInput').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { e.preventDefault(); addNewCategory(); }
     });
 
     updateAll();
